@@ -3,69 +3,61 @@ import pandas as pd
 import joblib
 
 # =========================
-# Load the trained model
+# Load saved pipeline
 # =========================
-model, features = joblib.load("random_forest_model.pkl")  
+pipeline = joblib.load("fraud_detection_pipeline.pkl")
 
-st.title("Subsidy Fraud Detection System 🚨")
+model = pipeline["model"]
+scaler = pipeline["scaler"]
+encoders = pipeline["encoders"]
+features = pipeline["features"]
 
-st.write("""
-This app predicts whether a subsidy transaction is **suspicious or not**  
-based on demographic, financial, and transaction information.
-""")
-
-# =========================
-# Collect User Input
-# =========================
-st.header("Enter Beneficiary / Transaction Details")
-
-with st.form("fraud_form"):
-    income_level = st.selectbox("Income Level", ["low", "medium", "high"])
-    subsidy_type = st.selectbox("Subsidy Type", ["fuel", "food", "cash"])
-    amount = st.number_input("Subsidy Amount (NGN)", min_value=0, step=100)
-    channel = st.selectbox("Disbursement Channel", ["bank", "mobile_wallet", "cash"])
-    wallet_activity_status = st.selectbox("Wallet Activity Status", ["active", "inactive"])
-    wallet_balance = st.number_input("Wallet Balance (NGN)", min_value=0.0, step=100.0)
-    avg_monthly_wallet_balance = st.number_input("Average Monthly Wallet Balance (NGN)", min_value=0.0, step=100.0)
-    days_since_last_transaction = st.number_input("Days Since Last Transaction", min_value=0, step=1)
-    isolation_forest_flag = st.selectbox("Isolation Forest Flag (anomaly)", [0, 1])  # Quick manual option
-
-    submitted = st.form_submit_button("Predict Fraud")
+st.title("🕵️ Subsidy Fraud Detection System")
 
 # =========================
-# Make Prediction
+# User input form
 # =========================
-if submitted:
-    # Create input dictionary
-    user_data = {
-        "income_level": income_level,
-        "subsidy_type": subsidy_type,
-        "amount_(ngn)": amount,
-        "channel": channel,
-        "wallet_activity_status": wallet_activity_status,
-        "wallet_balance_(ngn)": wallet_balance,
-        "avg_monthly_wallet_balance": avg_monthly_wallet_balance,
-        "days_since_last_transaction": days_since_last_transaction,
-        "isolation_forest_flag": isolation_forest_flag,
-    }
+user_data = {}
 
-    # Convert to DataFrame with correct feature order
-    input_df = pd.DataFrame([user_data], columns=features)
+# Example categorical inputs
+user_data["gender"] = st.selectbox("Gender", ["male", "female"])
+user_data["region"] = st.selectbox("Region", ["north", "south", "east", "west"])
+user_data["income_level"] = st.selectbox("Income Level", ["low", "medium", "high"])
+user_data["subsidy_type"] = st.selectbox("Subsidy Type", ["fuel", "food", "cash"])
+user_data["channel"] = st.selectbox("Channel", ["mobile", "bank", "agent"])
+user_data["wallet_activity_status"] = st.selectbox("Wallet Activity", ["active", "inactive"])
+user_data["year_month"] = st.text_input("Year-Month (e.g. 2022-01)", "2022-01")
+
+# Example numeric inputs
+user_data["amount_(ngn)"] = st.number_input("Amount (NGN)", 0, 100000, 5000)
+user_data["wallet_balance_(ngn)"] = st.number_input("Wallet Balance (NGN)", 0, 200000, 10000)
+user_data["avg_monthly_wallet_balance"] = st.number_input("Average Monthly Wallet Balance", 0, 200000, 12000)
+user_data["days_since_last_transaction"] = st.number_input("Days Since Last Transaction", 0, 365, 30)
+
+# Add anomaly flag manually if you want users to set it (optional)
+user_data["isolation_forest_flag"] = st.selectbox("Isolation Forest Flag", [0, 1])
+
+# =========================
+# Prediction
+# =========================
+if st.button("Predict Fraud"):
+    # Convert input to DataFrame
+    input_df = pd.DataFrame([user_data])
+
+    # Apply encoders for categorical columns
+    for col, le in encoders.items():
+        if col in input_df:
+            input_df[col] = le.transform(input_df[col].astype(str))
+
+    # Apply scaling
+    input_scaled = scaler.transform(input_df[features])
 
     # Predict
-    prediction = model.predict(input_df)[0]
-    proba = model.predict_proba(input_df)[0][1]  # probability of fraud
+    prediction = model.predict(input_scaled)[0]
+    proba = model.predict_proba(input_scaled)[0][1]
 
-    # =========================
-    # Show Results
-    # =========================
+    # Display result
     if prediction == 1:
-        st.error(f"🚨 Suspicious Transaction Detected! (Fraud Probability: {proba:.2%})")
+        st.error(f"⚠️ Fraudulent transaction detected with probability {proba:.2f}")
     else:
-        st.success(f"✅ Legitimate Transaction (Fraud Probability: {proba:.2%})")
-
-
-    if prediction == 1:
-        st.error("⚠️ Suspicious transaction detected (Possible Fraud)")
-    else:
-        st.success("✅ Transaction looks normal")
+        st.success(f"✅ Legitimate transaction with probability {1 - proba:.2f}")
