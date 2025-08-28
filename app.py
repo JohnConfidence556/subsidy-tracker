@@ -20,7 +20,6 @@ region = st.selectbox("Region", encoders["region"].classes_.tolist())
 income_level = st.selectbox("Income Level", encoders["income_level"].classes_.tolist())
 household_dependents = st.number_input("Household Dependents", min_value=0, step=1)
 monthly_energy_consumption_kwh = st.number_input("Monthly Energy Consumption (kWh)", min_value=0, step=10)
-subsidy_eligibility = st.selectbox("Subsidy Eligibility", encoders["subsidy_eligibility"].classes_.tolist())
 subsidy_type = st.selectbox("Subsidy Type", encoders["subsidy_type"].classes_.tolist())
 amount_ngn = st.number_input("Subsidy Amount (NGN)", min_value=0, step=100)
 channel = st.selectbox("Disbursement Channel", encoders["channel"].classes_.tolist())
@@ -38,7 +37,6 @@ user_data = {
     "income_level": income_level,
     "household_dependents": household_dependents,
     "monthly_energy_consumption_kwh": monthly_energy_consumption_kwh,
-    "subsidy_eligibility": subsidy_eligibility,
     "subsidy_type": subsidy_type,
     "amount_(ngn)": amount_ngn,
     "channel": channel,
