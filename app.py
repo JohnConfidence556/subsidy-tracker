@@ -50,6 +50,7 @@ st.subheader("Input Data")
 st.write(input_data)
 
 # Predict
+"""
 if st.button("Check Transaction"):
     prediction = model.predict(input_data)[0]
     prob = model.predict_proba(input_data)[0][1]  # probability of fraud
@@ -58,3 +59,26 @@ if st.button("Check Transaction"):
         st.error(f"🚨 Suspicious Transaction Detected! (Fraud Probability: {prob:.2f})")
     else:
         st.success(f"✅ Genuine Transaction (Fraud Probability: {prob:.2f})")
+"""
+
+if st.button("Check Transaction"):
+    # Encode categorical variables
+    input_encoded = encoder.transform(input_data[["gender", "income_level", "channel", "wallet_activity_status"]])
+    input_encoded_df = pd.DataFrame(input_encoded, columns=encoder.get_feature_names_out())
+
+    # Combine numerical + encoded categorical
+    numerical = input_data.drop(columns=["gender", "income_level", "channel", "wallet_activity_status"])
+    input_final = pd.concat([numerical.reset_index(drop=True), input_encoded_df.reset_index(drop=True)], axis=1)
+
+    # Scale numeric features
+    input_scaled = scaler.transform(input_final)
+
+    # Predict
+    prediction = model.predict(input_scaled)[0]
+    prob = model.predict_proba(input_scaled)[0][1]
+
+    # Show result
+    if prediction == 1:
+        st.error(f"⚠️ Fraudulent Transaction Detected! (Probability: {prob:.2f})")
+    else:
+        st.success(f"✅ Legitimate Transaction (Probability of fraud: {prob:.2f})")
